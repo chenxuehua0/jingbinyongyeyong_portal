@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quick.portal.userRole.RoleDao">
+	
+    <!--查询条件-->
+	<sql id="where">
+		1=1
+		<if test="role_id != null and role_id != '' and role_id != 'null'"><![CDATA[
+	       and role_id like  '%${role_id}%'
+	    ]]></if>
+	   	<if test="role_state != null and role_state != '' and role_state != 'null'"><![CDATA[ 
+	       and role_state = #{role_state}
+	    ]]></if>
+		<if test="role_name != null and role_name != '' and role_name != 'null'"><![CDATA[
+	       and role_name like '%${role_name}%'
+	    ]]></if>
+		<if test="cre_time != null and cre_time != '' and cre_time != 'null'"><![CDATA[
+	       and cre_time >= #{cre_time}
+	    ]]></if>
+        <if test="_sql_where != null and _sql_where != ''"> <![CDATA[
+            and ${_sql_where}
+        ]]> </if>
+
+	</sql>
+    
+    <!-- 新增  -->
+	<insert id="insert" parameterType="com.quick.portal.userRole.Role">
+		insert into user_role (
+    		  role_name,
+    		  role_state,
+    		  role_type_id,
+    		  cre_time,
+    		  upd_time
+		)values(
+			 #{role_name},
+			 #{role_state},
+			 #{role_type_id},
+			 now(),
+			 now()
+			)
+	</insert>
+		
+	<!-- 修改 -->
+	<update id="update" parameterType="com.quick.portal.userRole.Role">
+		update user_role
+		   set role_name=#{role_name}
+			  ,role_state=#{role_state}
+			  ,role_type_id=#{role_type_id}
+			  ,upd_time = now()
+		 where role_id = #{role_id}
+	</update>
+    
+	<!-- 删除 -->
+	<delete id="delete" parameterType="String">
+		delete from user_role where role_id=#{role_id};
+		delete from user_role_rela where role_id=#{role_id};
+		delete from menu_privilege where role_id=#{role_id};
+	</delete>
+    
+    <!--查询-->
+	<select id="select" parameterType="map" resultType="map">
+		select r.*,e.role_type_name
+		from user_role r inner join role_type e on r.role_type_id =e.role_type_id
+		<where>
+			<include refid="where" />
+		</where>
+        <if test="_sql_order != null and _sql_order != ''">
+            order by ${_sql_order}
+        </if>
+	</select>
+	
+	<!-- 查询总记录数 -->
+	<select id="count" parameterType="map" resultType="int">
+		select count(*) from  user_role r inner join role_type e on r.role_type_id =e.role_type_id
+		<where>
+			<include refid="where" />
+		</where>
+	</select>
+
+	<!--add by SongChaoqun-->
+	<select id="listAllMenu"  parameterType="map" resultType="map">
+		select m.*,p.show_on_init,p.show_order from sys_menu m
+           left join (select show_on_init,show_order,menu_id from menu_privilege where role_id=#{role_id}) p on p.menu_id=m.menu_id
+          where m.menu_state=1
+	</select>
+
+	<select id="listAllApp"  parameterType="map" resultType="map">
+		select m.*,p.show_on_init,p.show_order from sys_menu m
+		left join (select show_on_init,show_order,menu_id from menu_privilege where role_id=#{role_id}) p on p.menu_id=m.menu_id
+		where 1=1
+		order by p.show_order asc
+	</select>
+
+	<delete id="removeMenuPriByRole" parameterType="map">
+		delete from menu_privilege where role_id=#{role_id}
+	</delete>
+
+	<insert id="saveMenuPri" parameterType="map">
+		insert into menu_privilege (
+		menu_id,
+		role_id,
+		show_on_init,
+		show_order,
+		cre_time
+		)values(
+		#{menu_id},
+		#{role_id},
+		#{show_on_init},
+		#{show_order},
+		now()
+		)
+	</insert>
+	<update id="updateMenuPri" parameterType="map">
+		update menu_privilege
+		   set show_on_init=#{show_on_init},
+		        show_order=#{show_order}
+		 where role_id=#{role_id}
+		   and menu_id=#{menu_id}
+	</update>
+	<delete id="deleteMenuPri" parameterType="map">
+		delete from menu_privilege where role_id=#{role_id} and menu_id=#{menu_id};
+		delete from dashboard_app_config where app_id in (select app_id from sys_menu where app_id is not null and  menu_id=#{menu_id});
+	</delete>
+
+	<select id="listMenuPri"  parameterType="String" resultType="map">
+		select * from menu_privilege where role_id=#{role_id}
+	</select>
+	<!--add by SongChaoqun-->
+	<!--根据角色名精确查找
+	-->
+	<select id="selectObjByName"  parameterType="map" resultType="com.quick.portal.userRole.Role">
+		select * from user_role where role_name=#{role_name}
+	</select>
+
+	<!--角色类型的下拉框选项-->
+	<select id="getRoleType" parameterType="map" resultType="map">
+		SELECT  role_type_id,role_type_name FROM  ROLE_TYPE 
+	</select>
+</mapper>
